@@ -1,5 +1,6 @@
 import datetime
 import json
+import subprocess
 from abc import ABC, abstractmethod
 
 
@@ -16,6 +17,15 @@ class FunctionInterface(ABC):
 
 
 class DatetimeFunction(FunctionInterface):
+
+    def descriptor(self):
+        return self._description
+
+    @staticmethod
+    def execute(parameters):
+        return json.dumps({
+            "date": datetime.datetime.now().strftime(parameters["format"]),
+        })
 
     def __init__(self):
         self._description = {
@@ -36,13 +46,37 @@ class DatetimeFunction(FunctionInterface):
                 "required": ["format"],
             }}
 
-    @property
+
+class SystemFunction(FunctionInterface):
+
     def descriptor(self):
         return self._description
 
     @staticmethod
     def execute(parameters):
-        date_info = {
-            "date": datetime.datetime.now().strftime(parameters["format"]),
-        }
-        return json.dumps(date_info)
+        decoded_out = ""
+        try:
+            output = subprocess.check_output(parameters["cmd"], shell=True)
+            decoded_out = output.decode("utf-8")
+        except subprocess.CalledProcessError as e:
+            decoded_out = e.output.decode("utf-8")
+        finally:
+            print(f'executed_cmd: {parameters["cmd"]} \noutput: {decoded_out}')
+            return json.dumps({
+                "output": decoded_out,
+            })
+
+    def __init__(self):
+        self._description = {
+            "name": "system_function",
+            "description": "Execute a command on local-host and return output",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "cmd": {
+                        "type": "string",
+                        "description": "The cmd to execute, e.g. ls -lat | grep '.txt'",
+                    }
+                },
+                "required": ["cmd"],
+            }}

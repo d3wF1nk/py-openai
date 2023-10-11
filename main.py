@@ -4,7 +4,7 @@ import string
 
 import openai
 
-from functions import DatetimeFunction
+from functions import DatetimeFunction, SystemFunction
 
 # Press Maiusc+F10 to execute it or replace it with your code.
 
@@ -12,6 +12,7 @@ with open("cfg.json") as f:
     configs = json.load(f)
     api_key = configs["api_key"]
     prompt = configs["prompt"]
+    isEnabledSysFunc = configs["system_function_enabled"]
 
 messages = []
 functions = []
@@ -23,7 +24,7 @@ openai.api_key = api_key
 
 
 def addFunction(function):
-    functions.append(function.descriptor)
+    functions.append(function.descriptor())
 
 
 def addFunctionMessage(function_name: string, function_response: string):
@@ -46,6 +47,7 @@ def function_call(ai_message):
     if ai_message.get("function_call"):
         available_functions = {
             "datetime_function": DatetimeFunction.execute,
+            "system_function": SystemFunction.execute
         }
         function_name = ai_message["function_call"]["name"]
         if function_name not in available_functions:
@@ -82,6 +84,8 @@ def addOpenaiMessage():
 if __name__ == '__main__':
     addSystemMessage(prompt)
     addFunction(DatetimeFunction())
+    if isEnabledSysFunc:
+        addFunction(SystemFunction())
     print(f'Starting AI interaction with prompt:\n{prompt}')
     try:
         while True:
